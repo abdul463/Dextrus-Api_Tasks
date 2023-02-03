@@ -1,5 +1,6 @@
 package com.dextrus.controller;
 
+import java.sql.Connection;
 import java.util.ArrayList;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,47 +20,44 @@ public class DextrusController {
 	@Autowired
 	private DextrusService dextrusService;
 
+	private Connection connection=null;
 	@PostMapping("/dbConnection")
-	ResponseEntity<String> create(@RequestBody DextrusDto dextrusDto) {
-		int check = dextrusService.saveConnectionProperties(dextrusDto);
-		if (check == 1)
+	ResponseEntity<String> getDbConnection(@RequestBody DextrusDto dextrusDto) {
+		connection = dextrusService.getDbConnection(dextrusDto);
+		if (connection!=null)
 			return ResponseEntity.ok("{\"status\":\"success\"}");
 		else
 			return ResponseEntity.ok("{\"status\":\" unable to connect\"}");
 	}
 
 	@PostMapping("/getCatalogs")
-	ResponseEntity<ArrayList<DextrusDto>> get(@RequestBody DextrusDto dextrusDto) {
-		ArrayList<DextrusDto> list;
+	ResponseEntity<ArrayList<String>> getCatalogs(@RequestBody DextrusDto dextrusDto) {
+		ArrayList<String> list;
 		list = dextrusService.getCatalogs(dextrusDto);
-		// return ResponseEntity.ok("{\"status\":\"success\"}");
 		return new ResponseEntity<>(list, HttpStatus.OK);
 	}
 
 	@PostMapping("/schemaList")
-	ResponseEntity<ArrayList<DextrusDto>> getSchema(@RequestBody DextrusDto dextrusDto) {
-		ArrayList<DextrusDto> list;
+	ResponseEntity<ArrayList<String>> getSchema(@RequestBody DextrusDto dextrusDto) {
+		ArrayList<String> list;
 		list = dextrusService.getSchemaList(dextrusDto);
 		return new ResponseEntity<>(list, HttpStatus.OK);
 	}
 	
 	
 	@PostMapping("/TablesAndViews")
-	ResponseEntity<ArrayList<DextrusDto>>  getTables(@RequestBody DextrusDto dextrusDto){
-		ArrayList<DextrusDto> list;
-		list=dextrusService.getTablesAndViews(dextrusDto);
+	ResponseEntity<ArrayList<String>>  getTablesAndViews(@RequestBody DextrusDto dextrusDto){
+		ArrayList<String> list=dextrusService.getTablesAndViews(dextrusDto);
 		return new ResponseEntity<>(list,HttpStatus.OK);
 	}
 	@PostMapping("/TableProperties")
 	ResponseEntity<ArrayList<String>>  getTableProperties(@RequestBody DextrusDto dextrusDto){
-		ArrayList<String> list;
-		list=dextrusService.getTablesProperties(dextrusDto);
+		ArrayList<String> list=dextrusService.getTablesProperties(dextrusDto);
 		return new ResponseEntity<>(list,HttpStatus.OK);
 	}
 	@PostMapping("/getTabledata")
-	ResponseEntity<ArrayList<DextrusDto>> getTableDataByQuery(@RequestBody DextrusDto dextrusDto){
-		ArrayList<DextrusDto> list;
-		list=dextrusService.getTableDataByQuery(dextrusDto);
+	ResponseEntity<ArrayList<String>> getTableDataByQuery(@RequestBody DextrusDto dextrusDto){
+		ArrayList<String> list=dextrusService.getTableDataByQuery(dextrusDto);
 		return new ResponseEntity<>(list,HttpStatus.OK);
 	}
 	@PostMapping("/searchOperation")

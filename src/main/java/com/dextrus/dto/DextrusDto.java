@@ -14,6 +14,14 @@ public class DextrusDto {
 	String IsNullable;
 	String primaryKey;
 	String pattern;
+	String inputQuery;
+	public String getInputQuery() {
+		return inputQuery;
+	}
+	public void setInputQuery(String inputQuery) {
+		this.inputQuery = inputQuery;
+	}
+
 	public String getPattern() {
 		return pattern;
 	}

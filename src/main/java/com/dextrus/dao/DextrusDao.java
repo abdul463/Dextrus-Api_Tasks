@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.util.ArrayList;
 import org.springframework.stereotype.Repository;
@@ -12,21 +13,21 @@ import com.dextrus.dto.DextrusDto;
 
 @Repository
 public class DextrusDao {
-
-	public int dbConnection(DextrusDto dextrusDto) {
+	Connection connection=null;
+	public Connection getDbConnection(DextrusDto dextrusDto) {
 		try {
 			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-			Connection connection = DriverManager.getConnection(dextrusDto.getUrl(), dextrusDto.getUserName(),
+
+			connection = DriverManager.getConnection(dextrusDto.getUrl(), dextrusDto.getUserName(),
 					dextrusDto.getPassword());
-			return 1;
 		} catch (Exception e) {
 			e.printStackTrace();
-			return 0;
 		}
+		return connection;
 	}
 
-	public ArrayList retrieveCatalogs(DextrusDto dextrusDto) {
-		ArrayList list = new ArrayList();
+	public ArrayList<String> getCatalogs(DextrusDto dextrusDto) {
+		ArrayList<String> list = new ArrayList<>();
 		try {
 			String query = "SELECT name FROM sys.databases";
 			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
@@ -44,8 +45,8 @@ public class DextrusDao {
 		return list;
 	}
 
-	public ArrayList retrieveSchemaList(DextrusDto dextrusDto) {
-		ArrayList list = new ArrayList();
+	public ArrayList<String> getSchemaList(DextrusDto dextrusDto) {
+		ArrayList<String> list = new ArrayList<>();
 		try {
 			String query = "SELECT name FROM " + dextrusDto.getCatalog() + ".sys.schemas";
 			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
@@ -116,9 +117,25 @@ public class DextrusDao {
 		return list;
 	}
 
-	public ArrayList getTableDataByQuery(DextrusDto dextrusDto) {
-		ArrayList<String> list=new ArrayList<>();
-		
+	public ArrayList<String> getTableDataByQuery(DextrusDto dextrusDto) {
+		ArrayList<String> list = new ArrayList<>();
+		try {
+			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+			Connection connection = DriverManager.getConnection(dextrusDto.getUrl(), dextrusDto.getUserName(),
+					dextrusDto.getPassword());
+			Statement statement = connection.createStatement();
+			ResultSet resultSet = statement
+					.executeQuery("use " + dextrusDto.getCatalog() + "; " + dextrusDto.getInputQuery());
+			ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+			int columnCount = resultSetMetaData.getColumnCount();
+			while (resultSet.next()) {
+				for (int i = 1; i <= columnCount; i++) {
+					list.add(resultSetMetaData.getColumnName(i) + ":" + resultSet.getString(i));
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		return list;
 	}
 
