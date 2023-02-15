@@ -9,35 +9,38 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import org.springframework.stereotype.Repository;
 
-import com.dextrus.dto.DextrusDto;
+import com.dextrus.dto.ConnectionDto;
+import com.dextrus.dto.MetaDataDto;
+import com.dextrus.dto.TablePropertiesDto;
 
 @Repository
 public class DextrusDao {
-	Connection connection=null;
-	public Connection getDbConnection(DextrusDto dextrusDto) {
+	Connection connection;
+	public Connection getDbConnection(ConnectionDto connectionDto) {
 		try {
 			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
 
-			connection = DriverManager.getConnection(dextrusDto.getUrl(), dextrusDto.getUserName(),
-					dextrusDto.getPassword());
+			connection = DriverManager.getConnection(connectionDto.getUrl(), connectionDto.getUserName(),
+					connectionDto.getPassword());
 		} catch (Exception e) {
+			connection=null;
 			e.printStackTrace();
 		}
 		return connection;
 	}
 
-	public ArrayList<String> getCatalogs(DextrusDto dextrusDto) {
+	public ArrayList<String> getCatalogs(ConnectionDto connectionDto) {
 		ArrayList<String> list = new ArrayList<>();
 		try {
 			String query = "SELECT name FROM sys.databases";
 			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-			Connection conn = DriverManager.getConnection(dextrusDto.getUrl(), dextrusDto.getUserName(),
-					dextrusDto.getPassword());
+			Connection conn = DriverManager.getConnection(connectionDto.getUrl(), connectionDto.getUserName(),
+					connectionDto.getPassword());
 			Statement statement = conn.createStatement();
 			ResultSet resultSet = statement.executeQuery(query);
 			while (resultSet.next()) {
-				dextrusDto.setDbName(resultSet.getString(1));
-				list.add(dextrusDto.getDbName());
+				connectionDto.setDbName(resultSet.getString(1));
+				list.add(connectionDto.getDbName());
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -45,18 +48,18 @@ public class DextrusDao {
 		return list;
 	}
 
-	public ArrayList<String> getSchemaList(DextrusDto dextrusDto) {
+	public ArrayList<String> getSchemaList(ConnectionDto connectionDto,String catalog) {
 		ArrayList<String> list = new ArrayList<>();
 		try {
-			String query = "SELECT name FROM " + dextrusDto.getCatalog() + ".sys.schemas";
+			String query = "SELECT name FROM " + catalog + ".sys.schemas";
 			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-			Connection connection = DriverManager.getConnection(dextrusDto.getUrl(), dextrusDto.getUserName(),
-					dextrusDto.getPassword());
+			Connection connection = DriverManager.getConnection(connectionDto.getUrl(), connectionDto.getUserName(),
+					connectionDto.getPassword());
 			Statement statement = connection.createStatement();
 			ResultSet rs = statement.executeQuery(query);
 			while (rs.next()) {
-				dextrusDto.setDbName(rs.getString(1));
-				list.add(dextrusDto.getDbName());
+				connectionDto.setDbName(rs.getString(1));
+				list.add(connectionDto.getDbName());
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -64,25 +67,21 @@ public class DextrusDao {
 		return list;
 	}
 
-	public ArrayList<String> retrieveTableAndViews(DextrusDto dextrusDto) {
-		ArrayList<String> list = new ArrayList<>();
+	public ArrayList<TablePropertiesDto> retrieveTableAndViews(ConnectionDto connectionDto,String catalog,String schema) {
+		ArrayList<TablePropertiesDto> list = new ArrayList<>();
 		try {
 			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-			Connection connection = DriverManager.getConnection(dextrusDto.getUrl(), dextrusDto.getUserName(),
-					dextrusDto.getPassword());
-			PreparedStatement preparedStatement = connection.prepareStatement("use " + dextrusDto.getCatalog() + "; "
+			Connection connection = DriverManager.getConnection(connectionDto.getUrl(), connectionDto.getUserName(),
+					connectionDto.getPassword());
+			PreparedStatement preparedStatement = connection.prepareStatement("use " + catalog + "; "
 					+ "select * from INFORMATION_SCHEMA.TABLES where TABLE_SCHEMA=?;");
-			preparedStatement.setString(1, dextrusDto.getSchema());
+			preparedStatement.setString(1,schema);
 			ResultSet resultSet = preparedStatement.executeQuery();
 			while (resultSet.next()) {
-				dextrusDto.setCatalog(resultSet.getString(1));
-				dextrusDto.setSchema(resultSet.getString(2));
-				dextrusDto.setTableName(resultSet.getString(3));
-				dextrusDto.setTableType(resultSet.getString(4));
-				list.add(dextrusDto.getCatalog());
-				list.add(dextrusDto.getSchema());
-				list.add(dextrusDto.getTableName());
-				list.add(dextrusDto.getTableType());
+				TablePropertiesDto tablePropertiesDto=new TablePropertiesDto();
+				tablePropertiesDto.setTableName(resultSet.getString(3));
+				tablePropertiesDto.setTableType(resultSet.getString(4));
+				list.add(tablePropertiesDto);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -90,26 +89,25 @@ public class DextrusDao {
 		return list;
 	}
 
-	public ArrayList<String> getTableProperties(DextrusDto dextrusDto) {
-		ArrayList<String> list = new ArrayList<>();
+	public ArrayList<MetaDataDto> getTableProperties(ConnectionDto connectionDto,String catalog,String schema,String tableName) {
+		ArrayList<MetaDataDto> list = new ArrayList<>();
 		String tableDescriptionQuery = "SELECT c.name AS 'COLUMN_NAME', t.name AS 'DATA_TYPE', c.is_nullable AS 'IS_NULLABLE', ISNULL(i.is_primary_key, 0) AS 'PRIMARY_KEY' FROM sys.columns c INNER JOIN sys.types t ON c.user_type_id = t.user_type_id LEFT JOIN sys.index_columns ic ON ic.object_id = c.object_id AND ic.column_id = c.column_id LEFT JOIN sys.indexes i ON ic.object_id = i.object_id AND ic.index_id = i.index_id WHERE c.object_id = OBJECT_ID(?);";
 		try {
 			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-			Connection connection = DriverManager.getConnection(dextrusDto.getUrl(), dextrusDto.getUserName(),
-					dextrusDto.getPassword());
+			Connection connection = DriverManager.getConnection(connectionDto.getUrl(), connectionDto.getUserName(),
+					connectionDto.getPassword());
 			PreparedStatement preparedStatement = connection
-					.prepareStatement("use " + dextrusDto.getCatalog() + "; " + tableDescriptionQuery);
-			preparedStatement.setString(1, dextrusDto.getTableName());
+					.prepareStatement("use " + catalog + "; " + tableDescriptionQuery);
+			tableName=schema+"."+tableName;
+			preparedStatement.setString(1,tableName);
 			ResultSet resultSet = preparedStatement.executeQuery();
 			while (resultSet.next()) {
-				dextrusDto.setColumnName(resultSet.getString("COLUMN_NAME"));
-				dextrusDto.setDataType(resultSet.getString("DATA_TYPE"));
-				dextrusDto.setIsNullable(resultSet.getString("IS_NULLABLE"));
-				dextrusDto.setPrimaryKey(resultSet.getString("PRIMARY_KEY"));
-				list.add("Column_Name:" + dextrusDto.getColumnName());
-				list.add("Data_Type:" + dextrusDto.getDataType());
-				list.add("Is_Nullable" + dextrusDto.getIsNullable());
-				list.add("Primary_Key:" + dextrusDto.getPrimaryKey());
+				MetaDataDto metaDataDto=new MetaDataDto();
+				metaDataDto.setColumnName(resultSet.getString("COLUMN_NAME"));
+				metaDataDto.setDataType(resultSet.getString("DATA_TYPE"));
+				metaDataDto.setIsNullable(resultSet.getString("IS_NULLABLE"));
+				metaDataDto.setPrimaryKey(resultSet.getString("PRIMARY_KEY"));
+				list.add(metaDataDto);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -117,15 +115,15 @@ public class DextrusDao {
 		return list;
 	}
 
-	public ArrayList<String> getTableDataByQuery(DextrusDto dextrusDto) {
+	public ArrayList<String> getTableDataByQuery(ConnectionDto connectionDto,String catalog,String inputQuery) {
 		ArrayList<String> list = new ArrayList<>();
 		try {
 			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-			Connection connection = DriverManager.getConnection(dextrusDto.getUrl(), dextrusDto.getUserName(),
-					dextrusDto.getPassword());
+			Connection connection = DriverManager.getConnection(connectionDto.getUrl(), connectionDto.getUserName(),
+					connectionDto.getPassword());
 			Statement statement = connection.createStatement();
 			ResultSet resultSet = statement
-					.executeQuery("use " + dextrusDto.getCatalog() + "; " + dextrusDto.getInputQuery());
+					.executeQuery("use " + catalog + "; " + inputQuery+";");
 			ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
 			int columnCount = resultSetMetaData.getColumnCount();
 			while (resultSet.next()) {
@@ -139,20 +137,22 @@ public class DextrusDao {
 		return list;
 	}
 
-	public ArrayList<String> getTablesByPattern(DextrusDto dextrusDto) {
-		ArrayList<String> list = new ArrayList<>();
+	public ArrayList<TablePropertiesDto> getTablesByPattern(ConnectionDto connectionDto,String catalog) {
+		ArrayList<TablePropertiesDto> list = new ArrayList<>();
 		String getTablesByPatternQuery = "SELECT TABLE_NAME,TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME LIKE ?";
 		try {
 			Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-			Connection connection = DriverManager.getConnection(dextrusDto.getUrl(), dextrusDto.getUserName(),
-					dextrusDto.getPassword());
+			Connection connection = DriverManager.getConnection(connectionDto.getUrl(), connectionDto.getUserName(),
+					connectionDto.getPassword());
 			PreparedStatement preparedStatement = connection
-					.prepareStatement("use " + dextrusDto.getCatalog() + "; " + getTablesByPatternQuery);
-			preparedStatement.setString(1, dextrusDto.getPattern());
+					.prepareStatement("use " + catalog + "; " + getTablesByPatternQuery);
+			preparedStatement.setString(1,connectionDto.getPattern());
 			ResultSet resultSet = preparedStatement.executeQuery();
 			while (resultSet.next()) {
-				list.add("Table_Name:" + resultSet.getString("TABLE_NAME"));
-				list.add("Table_Type:" + resultSet.getString("TABLE_TYPE"));
+				TablePropertiesDto tablepropertiesDto=new TablePropertiesDto();
+				tablepropertiesDto.setTableName(resultSet.getString("TABLE_NAME"));
+				tablepropertiesDto.setTableType(resultSet.getString("TABLE_TYPE"));
+				list.add(tablepropertiesDto);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
